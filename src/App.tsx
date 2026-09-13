@@ -1,8 +1,16 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { CONTINENTS, TERRITORIES, SEA_ROUTES } from './data/warMapData';
 import { CLASSIC_OBJECTIVES, checkObjectiveProgress } from './data/objectivesData';
 import { DEFAULT_MECHANICS, GLOBAL_EVENTS } from './data/mechanicsData';
-import { ActiveMechanics, GlobalEvent, GameLogEntry, Player, SecretObjective, TerritoryState, TurnPhase } from './types/war';
+import { 
+  ActiveMechanics, 
+  GlobalEvent, 
+  GameLogEntry, 
+  Player, 
+  SecretObjective, 
+  TerritoryState, 
+  TurnPhase 
+} from './types/war';
 import { warAudio } from './sound/audio';
 import { WarBoard } from './components/Map/WarBoard';
 import { GameHeader } from './components/HUD/GameHeader';
@@ -16,7 +24,6 @@ import { MechanicsEditorModal } from './components/Modals/MechanicsEditorModal';
 import { TacticalCardsModal } from './components/Modals/TacticalCardsModal';
 import { GameLogModal } from './components/Modals/GameLogModal';
 import { VictoryModal } from './components/Modals/VictoryModal';
-import { StrategicAirStrikeModal } from './components/Modals/StrategicAirStrikeModal';
 import { GameSetup } from './components/Setup/GameSetup';
 
 export default function App() {
@@ -28,13 +35,11 @@ export default function App() {
   const [currentRound, setCurrentRound] = useState(1);
   const [currentPhase, setCurrentPhase] = useState<TurnPhase>('reinforce');
   const [territories, setTerritories] = useState<Record<string, TerritoryState>>({});
-  const [reserveArmies, setReserveArmies] = useState(0);
-  const [cardTradeCount, setCardTradeCount] = useState(0);
-  const [conqueredThisTurn, setConqueredThisTurn] = useState(false);
+  const [reserveArmies, setReserveArmies] = useState<number>(0);
+  const [cardTradeCount, setCardTradeCount] = useState<number>(0);
+  const [conqueredThisTurn, setConqueredThisTurn] = useState<boolean>(false);
   const [gameLogs, setGameLogs] = useState<GameLogEntry[]>([]);
   const [activeGlobalEvent, setActiveGlobalEvent] = useState<GlobalEvent | null>(null);
-  const [strategicSecretTerritoryId, setStrategicSecretTerritoryId] = useState<string | null>(null);
-  const [strategicCardDiscovered, setStrategicCardDiscovered] = useState(false);
   const [selectedTerritoryId, setSelectedTerritoryId] = useState<string | null>(null);
   const [targetTerritoryId, setTargetTerritoryId] = useState<string | null>(null);
   const [isCombatModalOpen, setIsCombatModalOpen] = useState(false);
@@ -47,27 +52,538 @@ export default function App() {
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   const [winnerPlayer, setWinnerPlayer] = useState<Player | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(true);
-  const [tacticalTargetMode, setTacticalTargetMode] = useState<'air_strike' | 'strategic_air_strike' | 'fortify' | null>(null);
-  const [strategicSourceId, setStrategicSourceId] = useState<string | null>(null);
-  const [strategicTargetId, setStrategicTargetId] = useState<string | null>(null);
-  const [isStrategicConfigOpen, setIsStrategicConfigOpen] = useState(false);
-  const strategicCommittedTroopsRef = useRef(0);
+  const [tacticalTargetMode, setTacticalTargetMode] = useState<'air_strike' | 'fortify' | null>(null);
   const activePlayer = players[activePlayerIndex] || null;
-  const toggleAudio = () => { warAudio.enabled = !audioEnabled; setAudioEnabled(!audioEnabled); };
-  const addLog = useCallback((text: string, type: GameLogEntry['type']) => { setGameLogs(prev => [...prev, { id:`log_${Date.now()}_${Math.random()}`, turn:currentRound, text, timestamp:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}), type, color:activePlayer?.color }]); }, [currentRound, activePlayer]);
-  const calculateReinforcements = useCallback((player: Player, terrs: Record<string, TerritoryState>) => { const count=Object.values(terrs).filter(t=>t.ownerId===player.id).length; let armies=Math.max(activeMechanics.minArmiesPlacement,Math.floor(count/2)); for(const cont of Object.values(CONTINENTS)){if(cont.territoryIds.every(tId=>terrs[tId]?.ownerId===player.id)) armies+=cont.bonus;} if(activeGlobalEvent?.effect==='arms_shipment') armies+=2; return armies; }, [activeMechanics.minArmiesPlacement, activeGlobalEvent]);
-  const checkVictory = useCallback(() => { if(!activePlayer) return false; const obj=objectivesDeck.find(o=>o.id===activePlayer.objectiveId); if(!obj)return false; const progress=checkObjectiveProgress(obj,activePlayer,players,territories); if(progress.completed&&!winnerPlayer){setWinnerPlayer(activePlayer); addLog(`🏆 ${activePlayer.name} completou o objetivo "${obj.title}" e venceu a guerra!`,'elimination'); return true;} return false; },[activePlayer,objectivesDeck,players,territories,winnerPlayer,addLog]);
-  const handleStartGame = (configuredPlayers: Player[], mechanics: ActiveMechanics) => { setActiveMechanics(mechanics); warAudio.playDiceRoll(); const terrIds=Object.keys(TERRITORIES).sort(()=>Math.random()-0.5); const initialTerrState:Record<string,TerritoryState>={}; terrIds.forEach((tId,idx)=>{const p=configuredPlayers[idx%configuredPlayers.length]; initialTerrState[tId]={id:tId,ownerId:p.id,armies:1,fortified:false};}); const shuffledObjs=[...objectivesDeck].sort(()=>Math.random()-0.5); const assignedPlayers=configuredPlayers.map((p,idx)=>({...p,objectiveId:shuffledObjs[idx%shuffledObjs.length]?.id||CLASSIC_OBJECTIVES[0].id,cards:[],tacticalCards:['tac_air_strike','tac_fortify'],eliminated:false,stats:{territoriesLost:0,territoriesConquered:0,armiesDefeated:0,armiesLost:0}})); setPlayers(assignedPlayers); setTerritories(initialTerrState); setActivePlayerIndex(0); setCurrentRound(1); setCurrentPhase('reinforce'); setConqueredThisTurn(false); setSelectedTerritoryId(null); setTargetTerritoryId(null); setWinnerPlayer(null); setStrategicSecretTerritoryId(terrIds[Math.floor(Math.random()*terrIds.length)]||null); setStrategicCardDiscovered(false); setStrategicSourceId(null); setStrategicTargetId(null); setIsStrategicConfigOpen(false); setTacticalTargetMode(null); setReserveArmies(Math.max(mechanics.minArmiesPlacement,Math.floor((initialTerrState?Object.values(initialTerrState).filter(t=>t.ownerId===assignedPlayers[0].id).length:0)/2))); setGameLogs([{id:'init',turn:1,text:`Partida de WAR iniciada com ${assignedPlayers.length} generais! Territórios distribuídos estrategicamente.`,timestamp:new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),type:'event'}]); setInGame(true); };
-  const validTargets = useMemo(() => { if(!selectedTerritoryId||!activePlayer)return []; const selTerr=TERRITORIES[selectedTerritoryId], selState=territories[selectedTerritoryId]; if(!selTerr||!selState)return []; if(tacticalTargetMode==='air_strike'){const s=new Set<string>(); selTerr.neighbors.forEach(n=>{s.add(n);TERRITORIES[n]?.neighbors.forEach(n2=>s.add(n2));});return [...s].filter(id=>territories[id]?.ownerId!==activePlayer.id);} if(tacticalTargetMode==='strategic_air_strike'){if(selState.ownerId!==activePlayer.id||selState.armies<20)return [];return Object.keys(TERRITORIES).filter(id=>territories[id]?.ownerId!==activePlayer.id);} if(currentPhase==='attack'){if(selState.ownerId!==activePlayer.id||selState.armies<2)return [];return selTerr.neighbors.filter(id=>territories[id]?.ownerId!==activePlayer.id);} if(currentPhase==='maneuver'){if(selState.ownerId!==activePlayer.id||selState.armies<2)return [];return selTerr.neighbors.filter(id=>territories[id]?.ownerId===activePlayer.id);} return []; },[selectedTerritoryId,activePlayer,territories,tacticalTargetMode,currentPhase]);
-  const fogRevealedTerritories = useMemo(()=>{if(!activePlayer||!activeMechanics.fogOfWar)return Object.keys(TERRITORIES);const own=new Set(activePlayer.territories);Object.values(territories).forEach(t=>{if(t.ownerId===activePlayer.id){own.add(t.id);TERRITORIES[t.id]?.neighbors.forEach(n=>own.add(n));}});return [...own];},[activePlayer,activeMechanics.fogOfWar,territories]);
-  const handleSelectTerritory = (id:string) => { const state=territories[id]; if(!state||!activePlayer)return; if(tacticalTargetMode==='strategic_air_strike'){if(!strategicSourceId){if(state.ownerId!==activePlayer.id||state.armies<20)return;setStrategicSourceId(id);setSelectedTerritoryId(id);return;}if(state.ownerId===activePlayer.id)return;setStrategicTargetId(id);setTargetTerritoryId(id);setIsStrategicConfigOpen(true);return;} if(tacticalTargetMode==='air_strike'){if(!selectedTerritoryId){if(state.ownerId!==activePlayer.id)return;setSelectedTerritoryId(id);return;}if(validTargets.includes(id)){setTargetTerritoryId(id);setIsCombatModalOpen(true);}return;} if(currentPhase==='reinforce'&&state.ownerId===activePlayer.id&&reserveArmies>0){setTerritories(prev=>({...prev,[id]:{...prev[id],armies:prev[id].armies+1}}));setReserveArmies(v=>v-1);warAudio.playTroopPlace();return;} if(currentPhase==='attack'){if(!selectedTerritoryId){if(state.ownerId===activePlayer.id&&state.armies>=2)setSelectedTerritoryId(id);return;}if(validTargets.includes(id)){setTargetTerritoryId(id);setIsCombatModalOpen(true);}else if(state.ownerId===activePlayer.id&&state.armies>=2)setSelectedTerritoryId(id);return;} if(currentPhase==='maneuver'){if(!selectedTerritoryId){if(state.ownerId===activePlayer.id&&state.armies>=2)setSelectedTerritoryId(id);return;}if(validTargets.includes(id)){setTargetTerritoryId(id);setIsManeuverModalOpen(true);}else if(state.ownerId===activePlayer.id&&state.armies>=2)setSelectedTerritoryId(id);} };
-  const handleResolveCombat = (result:any) => { setTerritories(result.territories); setPlayers(result.players||players); setIsCombatModalOpen(false); setConqueredThisTurn(result.conquered??conqueredThisTurn); if(result.conquered&&strategicSecretTerritoryId&&result.conqueredTerritoryId===strategicSecretTerritoryId&&!strategicCardDiscovered){setPlayers(prev=>prev.map(p=>p.id===activePlayer?.id?{...p,tacticalCards:[...p.tacticalCards,'tac_strategic_air_strike']}:p));setStrategicCardDiscovered(true);addLog('✈️ Região estratégica descoberta! Você recebeu a carta Ataque Aéreo Estratégico.','mechanic');} setSelectedTerritoryId(null);setTargetTerritoryId(null);setTacticalTargetMode(null);setStrategicSourceId(null);setStrategicTargetId(null);checkVictory(); };
-  const handleConfirmStrategicStrike = (committed:number) => { if(!strategicSourceId||!strategicTargetId)return; strategicCommittedTroopsRef.current=committed; setIsStrategicConfigOpen(false); setIsCombatModalOpen(true); setSelectedTerritoryId(strategicSourceId); setTargetTerritoryId(strategicTargetId); addLog(`✈️ Ataque Aéreo Estratégico lançado de ${TERRITORIES[strategicSourceId].name} contra ${TERRITORIES[strategicTargetId].name} com ${committed} exércitos comprometidos.`,'combat'); };
-  const handleExecuteManeuver = (fromId:string,toId:string,count:number) => { setTerritories(prev=>({...prev,[fromId]:{...prev[fromId],armies:prev[fromId].armies-count},[toId]:{...prev[toId],armies:prev[toId].armies+count}})); setIsManeuverModalOpen(false);setSelectedTerritoryId(null);setTargetTerritoryId(null);addLog(`🪖 Remanejamento: ${count} exércitos movidos.`, 'maneuver'); };
-  const handleNextPhase = () => { if(currentPhase==='reinforce'){if(reserveArmies>0)return;setCurrentPhase('attack');return;} if(currentPhase==='attack'){setCurrentPhase('maneuver');setSelectedTerritoryId(null);return;} setCurrentPhase('reinforce');setActivePlayerIndex(i=>(i+1)%players.length);setCurrentRound(r=>r+1);setSelectedTerritoryId(null);setTargetTerritoryId(null);setConqueredThisTurn(false); if(players.length){const next=players[(activePlayerIndex+1)%players.length];setReserveArmies(calculateReinforcements(next,territories));} if(activeMechanics.globalEvents&&Math.random()<0.25){setActiveGlobalEvent(GLOBAL_EVENTS[Math.floor(Math.random()*GLOBAL_EVENTS.length)]);}};
-  const handleUseTacticalAction=(actionType:string)=>{if(!activePlayer)return;if(actionType==='strategic_air_strike'){if(!activePlayer.tacticalCards.includes('tac_strategic_air_strike')){addLog('⚠️ Você não possui a carta Ataque Aéreo Estratégico.','mechanic');return;}setSelectedTerritoryId(null);setTargetTerritoryId(null);setStrategicSourceId(null);setStrategicTargetId(null);setTacticalTargetMode('strategic_air_strike');addLog('✈️ Ataque Aéreo Estratégico ativado: escolha uma origem com pelo menos 20 exércitos e depois qualquer território inimigo do mapa.','mechanic');}else if(actionType==='air_strike'){setTacticalTargetMode('air_strike');addLog('✈️ Modo Ataque Aéreo ativado.','mechanic');}else if(actionType==='fortify'){setTacticalTargetMode('fortify');addLog('🛡️ Modo Fortaleza ativado.','mechanic');}else if(actionType==='spy_objective'){setIsObjectiveModalOpen(true);addLog('👁️ Espionagem militar ativada.','mechanic');}else if(actionType==='emergency_recruits'){setReserveArmies(v=>v+3);warAudio.playTroopPlace();addLog('🪖 Conscrição de Emergência! +3 exércitos adicionados à reserva.','mechanic');}else if(actionType==='blitzkrieg'){warAudio.playDiceRoll();addLog('⚡ Blitzkrieg ativada!','mechanic');}};
-  const activeObjective=useMemo(()=>activePlayer?(objectivesDeck.find(o=>o.id===activePlayer.objectiveId)||CLASSIC_OBJECTIVES[0]):CLASSIC_OBJECTIVES[0],[activePlayer,objectivesDeck]);
-  const activeProgress=useMemo(()=>activePlayer?checkObjectiveProgress(activeObjective,activePlayer,players,territories):{completed:false,percent:0,statusText:''},[activeObjective,activePlayer,players,territories]);
-  useEffect(()=>{if(inGame&&activePlayer&&reserveArmies===0&&currentPhase==='reinforce'){}},[inGame,activePlayer,reserveArmies,currentPhase]);
-  return <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 font-['Plus_Jakarta_Sans'] select-none">{!inGame?<GameSetup onStartGame={handleStartGame} onOpenObjectivesBuilder={()=>setIsObjectivesBuilderOpen(true)} onOpenMechanicsEditor={()=>setIsMechanicsEditorOpen(true)} activeMechanics={activeMechanics} objectivesDeck={objectivesDeck}/>:<div className="flex flex-col h-full w-full"><GameHeader activePlayer={activePlayer!} currentPhase={currentPhase} reserveArmies={reserveArmies} currentRound={currentRound} activeGlobalEvent={activeGlobalEvent} onToggleAudio={toggleAudio} audioEnabled={audioEnabled}/>{tacticalTargetMode&&<div className="w-full bg-amber-600/90 text-slate-950 px-4 py-1.5 text-xs font-black tracking-wider flex items-center justify-between"><span>{tacticalTargetMode==='air_strike'?'✈️ MIRA AÉREA ATIVA':tacticalTargetMode==='strategic_air_strike'?(strategicSourceId?'✈️ ATAQUE AÉREO ESTRATÉGICO: agora escolha qualquer território inimigo do mapa.':'✈️ ATAQUE AÉREO ESTRATÉGICO: escolha uma origem com pelo menos 20 exércitos.'):'🛡️ CONSTRUIR FORTALEZA'}</span><button onClick={()=>setTacticalTargetMode(null)} className="px-2 py-0.5 rounded bg-black/40 text-white text-[11px] font-bold">Cancelar</button></div>}<main className="flex-1 w-full relative overflow-hidden bg-[#0a1520] p-2 sm:p-4 flex items-center justify-center"><WarBoard territories={territories} players={players} activePlayer={activePlayer!} currentPhase={currentPhase} selectedTerritoryId={selectedTerritoryId} targetTerritoryId={targetTerritoryId} onSelectTerritory={handleSelectTerritory} validTargets={validTargets} activeMechanics={activeMechanics} fogRevealedTerritories={fogRevealedTerritories}/></main><ActionPanel activePlayer={activePlayer!} currentPhase={currentPhase} reserveArmies={reserveArmies} objectiveProgressPercent={activeProgress.percent} activeMechanics={activeMechanics} onNextPhase={handleNextPhase} onOpenObjective={()=>setIsObjectiveModalOpen(true)} onOpenCards={()=>setIsCardsModalOpen(true)} onOpenTacticalCards={()=>setIsTacticalCardsOpen(true)} onOpenObjectivesBuilder={()=>setIsObjectivesBuilderOpen(true)} onOpenMechanicsEditor={()=>setIsMechanicsEditorOpen(true)} onOpenLogs={()=>setIsLogsOpen(true)} onRestart={()=>setInGame(false)}/></div>}{isStrategicConfigOpen&&strategicSourceId&&strategicTargetId&&<StrategicAirStrikeModal sourceName={TERRITORIES[strategicSourceId].name} availableArmies={territories[strategicSourceId].armies} targetName={TERRITORIES[strategicTargetId].name} onConfirm={handleConfirmStrategicStrike} onClose={()=>{setIsStrategicConfigOpen(false);setStrategicTargetId(null);setTargetTerritoryId(null);}}/>}{isCombatModalOpen&&selectedTerritoryId&&targetTerritoryId&&<CombatModal attackerPlayer={activePlayer!} defenderPlayer={players.find(p=>p.id===territories[targetTerritoryId].ownerId)||players[0]} attackerTerritoryState={territories[selectedTerritoryId]} defenderTerritoryState={territories[targetTerritoryId]} activeMechanics={activeMechanics} initialAttackerArmies={tacticalTargetMode==='strategic_air_strike'&&strategicSourceId===selectedTerritoryId?strategicCommittedTroopsRef.current-Math.floor(strategicCommittedTroopsRef.current/2):undefined} autoMoveAllOnConquest={tacticalTargetMode==='strategic_air_strike'} onResolveCombat={handleResolveCombat} onClose={()=>{setIsCombatModalOpen(false);setTargetTerritoryId(null);if(tacticalTargetMode==='strategic_air_strike'){setStrategicSourceId(null);setStrategicTargetId(null);setSelectedTerritoryId(null);setTacticalTargetMode(null);}}}/>} {isManeuverModalOpen&&selectedTerritoryId&&targetTerritoryId&&<ManeuverModal fromTerritory={territories[selectedTerritoryId]} toTerritory={territories[targetTerritoryId]} onExecuteManeuver={handleExecuteManeuver} onClose={()=>{setIsManeuverModalOpen(false);setTargetTerritoryId(null);}}/>}{isCardsModalOpen&&activePlayer&&<CardsModal player={activePlayer} tradeCount={cardTradeCount} territories={territories} onTradeCards={()=>{}} onClose={()=>setIsCardsModalOpen(false)}/>} {isObjectiveModalOpen&&activePlayer&&<ObjectiveModal objective={activeObjective} progress={activeProgress} playerName={activePlayer.name} onClose={()=>setIsObjectiveModalOpen(false)}/>} {isObjectivesBuilderOpen&&<ObjectivesBuilderModal objectivesDeck={objectivesDeck} onAddObjective={o=>setObjectivesDeck(p=>[...p,o])} onRemoveObjective={id=>setObjectivesDeck(p=>p.filter(o=>o.id!==id))} onClose={()=>setIsObjectivesBuilderOpen(false)}/>} {isMechanicsEditorOpen&&<MechanicsEditorModal mechanics={activeMechanics} onUpdateMechanics={setActiveMechanics} onClose={()=>setIsMechanicsEditorOpen(false)}/>} {isTacticalCardsOpen&&activePlayer&&<TacticalCardsModal player={activePlayer} onUseTacticalAction={handleUseTacticalAction} onClose={()=>setIsTacticalCardsOpen(false)}/>} {isLogsOpen&&<GameLogModal logs={gameLogs} onClose={()=>setIsLogsOpen(false)}/>} {winnerPlayer&&<VictoryModal winner={winnerPlayer} objective={activeObjective} totalTurns={currentRound} onPlayAgain={()=>{setWinnerPlayer(null);setInGame(false)}}/>}</div>;
+
+  const toggleAudio = () => {
+    warAudio.enabled = !audioEnabled;
+    setAudioEnabled(!audioEnabled);
+  };
+
+  const addLog = useCallback((text: string, type: GameLogEntry['type']) => {
+    const newEntry: GameLogEntry = {
+      id: `log_${Date.now()}_${Math.random()}`,
+      turn: currentRound,
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type,
+      color: activePlayer?.color
+    };
+    setGameLogs(prev => [...prev, newEntry]);
+  }, [currentRound, activePlayer]);
+
+  const calculateReinforcements = useCallback((player: Player, terrs: Record<string, TerritoryState>) => {
+    const playerTerrs = (Object.values(terrs) as TerritoryState[]).filter(t => t.ownerId === player.id);
+    const count = playerTerrs.length;
+    let armies = Math.max(activeMechanics.minArmiesPlacement, Math.floor(count / 2));
+    for (const cont of Object.values(CONTINENTS)) {
+      const ownsAll = cont.territoryIds.every(tId => terrs[tId]?.ownerId === player.id);
+      if (ownsAll) armies += cont.bonus;
+    }
+    if (activeGlobalEvent?.effect === 'arms_shipment') armies += 2;
+    return armies;
+  }, [activeMechanics.minArmiesPlacement, activeGlobalEvent]);
+
+  const checkVictory = useCallback(() => {
+    if (!activePlayer) return false;
+    const obj = objectivesDeck.find(o => o.id === activePlayer.objectiveId);
+    if (!obj) return false;
+    const progress = checkObjectiveProgress(obj, activePlayer, players, territories);
+    if (progress.completed && !winnerPlayer) {
+      setWinnerPlayer(activePlayer);
+      addLog(`🏆 ${activePlayer.name} completou o objetivo "${obj.title}" e venceu a guerra!`, 'elimination');
+      return true;
+    }
+    return false;
+  }, [activePlayer, objectivesDeck, players, territories, winnerPlayer, addLog]);
+
+  const handleStartGame = (configuredPlayers: Player[], mechanics: ActiveMechanics) => {
+    setActiveMechanics(mechanics);
+    warAudio.playDiceRoll();
+    const terrIds = Object.keys(TERRITORIES).sort(() => Math.random() - 0.5);
+    const initialTerrState: Record<string, TerritoryState> = {};
+    terrIds.forEach((tId, idx) => {
+      const assignedPlayer = configuredPlayers[idx % configuredPlayers.length];
+      initialTerrState[tId] = { id: tId, ownerId: assignedPlayer.id, armies: 1, fortified: false };
+    });
+
+    const shuffledObjs = [...objectivesDeck].sort(() => Math.random() - 0.5);
+    const assignedPlayers = configuredPlayers.map((p, idx) => ({
+      ...p,
+      objectiveId: shuffledObjs[idx % shuffledObjs.length]?.id || CLASSIC_OBJECTIVES[0].id,
+      cards: [],
+      tacticalCards: ['tac_air_strike', 'tac_fortify'],
+      eliminated: false,
+      stats: { territoriesLost: 0, territoriesConquered: 0, armiesDefeated: 0, armiesLost: 0 }
+    }));
+
+    setPlayers(assignedPlayers);
+    setTerritories(initialTerrState);
+    setActivePlayerIndex(0);
+    setCurrentRound(1);
+    setCurrentPhase('reinforce');
+    setConqueredThisTurn(false);
+    setSelectedTerritoryId(null);
+    setTargetTerritoryId(null);
+    setWinnerPlayer(null);
+    setReserveArmies(calculateReinforcements(assignedPlayers[0], initialTerrState));
+    setGameLogs([{
+      id: 'init',
+      turn: 1,
+      text: `Partida de WAR iniciada com ${assignedPlayers.length} generais! Territórios distribuídos estrategicamente.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: 'event'
+    }]);
+    setInGame(true);
+  };
+
+  const validTargets = useMemo(() => {
+    if (!selectedTerritoryId || !activePlayer) return [];
+    const selTerr = TERRITORIES[selectedTerritoryId];
+    const selState = territories[selectedTerritoryId];
+    if (!selTerr || !selState) return [];
+
+    if (tacticalTargetMode === 'air_strike') {
+      const step1 = selTerr.neighbors;
+      const step2 = new Set<string>();
+      step1.forEach(nId => {
+        step2.add(nId);
+        TERRITORIES[nId]?.neighbors.forEach(n2 => step2.add(n2));
+      });
+      return Array.from(step2).filter(tId => territories[tId]?.ownerId !== activePlayer.id);
+    }
+
+    if (currentPhase === 'attack') {
+      if (selState.ownerId !== activePlayer.id || selState.armies < 2) return [];
+      return selTerr.neighbors.filter(nId => territories[nId]?.ownerId !== activePlayer.id);
+    }
+
+    if (currentPhase === 'maneuver') {
+      if (selState.ownerId !== activePlayer.id || selState.armies < 2) return [];
+      return selTerr.neighbors.filter(nId => territories[nId]?.ownerId === activePlayer.id);
+    }
+    return [];
+  }, [selectedTerritoryId, activePlayer, territories, currentPhase, tacticalTargetMode]);
+
+  const fogRevealedTerritories = useMemo(() => {
+    if (!activeMechanics.fogOfWar || !activePlayer) return undefined;
+    const revealed = new Set<string>();
+    (Object.values(territories) as TerritoryState[]).forEach(t => {
+      if (t.ownerId === activePlayer.id) {
+        revealed.add(t.id);
+        TERRITORIES[t.id]?.neighbors.forEach(n => revealed.add(n));
+      }
+    });
+    return revealed;
+  }, [activeMechanics.fogOfWar, activePlayer, territories]);
+
+  const handleSelectTerritory = (territoryId: string) => {
+    if (!activePlayer || activePlayer.isAI) return;
+    const tState = territories[territoryId];
+    if (!tState) return;
+
+    if (tacticalTargetMode === 'air_strike') {
+      if (validTargets.includes(territoryId)) {
+        warAudio.playClash();
+        const lost = Math.min(2, Math.max(1, Math.floor(Math.random() * 2) + 1));
+        const updatedArmies = Math.max(1, tState.armies - lost);
+        setTerritories(prev => ({ ...prev, [territoryId]: { ...prev[territoryId], armies: updatedArmies } }));
+        addLog(`✈️ Ataque Aéreo em ${TERRITORIES[territoryId].name}! Destruiu ${lost} exércitos inimigos.`, 'mechanic');
+        setTacticalTargetMode(null);
+        setSelectedTerritoryId(null);
+      } else {
+        setTacticalTargetMode(null);
+        setSelectedTerritoryId(null);
+      }
+      return;
+    }
+
+    if (tacticalTargetMode === 'fortify') {
+      if (tState.ownerId === activePlayer.id) {
+        warAudio.playCard();
+        setTerritories(prev => ({ ...prev, [territoryId]: { ...prev[territoryId], fortified: true } }));
+        addLog(`🛡️ Fortaleza construída com sucesso em ${TERRITORIES[territoryId].name}!`, 'mechanic');
+        setTacticalTargetMode(null);
+      }
+      return;
+    }
+
+    if (currentPhase === 'reinforce') {
+      if (tState.ownerId === activePlayer.id && reserveArmies > 0) {
+        warAudio.playTroopPlace();
+        setTerritories(prev => ({ ...prev, [territoryId]: { ...prev[territoryId], armies: prev[territoryId].armies + 1 } }));
+        setReserveArmies(prev => prev - 1);
+        addLog(`+1 exército posicionado em ${TERRITORIES[territoryId].name}`, 'reinforce');
+      }
+      return;
+    }
+
+    if (currentPhase === 'attack') {
+      if (tState.ownerId === activePlayer.id) {
+        if (tState.armies >= 2) {
+          warAudio.playClick();
+          setSelectedTerritoryId(territoryId);
+          setTargetTerritoryId(null);
+        }
+      } else if (selectedTerritoryId && validTargets.includes(territoryId)) {
+        setTargetTerritoryId(territoryId);
+        setIsCombatModalOpen(true);
+      }
+      return;
+    }
+
+    if (currentPhase === 'maneuver') {
+      if (tState.ownerId === activePlayer.id) {
+        if (!selectedTerritoryId) {
+          if (tState.armies >= 2) {
+            warAudio.playClick();
+            setSelectedTerritoryId(territoryId);
+          }
+        } else {
+          if (territoryId === selectedTerritoryId) {
+            setSelectedTerritoryId(null);
+          } else if (validTargets.includes(territoryId)) {
+            setTargetTerritoryId(territoryId);
+            setIsManeuverModalOpen(true);
+          } else if (tState.armies >= 2) {
+            setSelectedTerritoryId(territoryId);
+          }
+        }
+      }
+    }
+  };
+
+  const handleResolveCombat = (result: {
+    attackerRemaining: number;
+    defenderRemaining: number;
+    conquered: boolean;
+    movedArmies: number;
+  }) => {
+    if (!selectedTerritoryId || !targetTerritoryId || !activePlayer) return;
+    const defenderPlayer = players.find(p => p.id === territories[targetTerritoryId].ownerId);
+
+    if (result.conquered) {
+      setConqueredThisTurn(true);
+      addLog(`🚩 ${activePlayer.name} conquistou ${TERRITORIES[targetTerritoryId].name} de ${defenderPlayer?.name}!`, 'conquest');
+      setTerritories(prev => ({
+        ...prev,
+        [selectedTerritoryId]: { ...prev[selectedTerritoryId], armies: result.attackerRemaining },
+        [targetTerritoryId]: { ...prev[targetTerritoryId], ownerId: activePlayer.id, armies: result.movedArmies, fortified: false }
+      }));
+
+      setPlayers(prev => prev.map(p => {
+        if (p.id === activePlayer.id) return { ...p, stats: { ...p.stats, territoriesConquered: p.stats.territoriesConquered + 1 } };
+        if (defenderPlayer && p.id === defenderPlayer.id) return { ...p, stats: { ...p.stats, territoriesLost: p.stats.territoriesLost + 1 } };
+        return p;
+      }));
+
+      setTimeout(() => {
+        setTerritories(currentTerrs => {
+          if (defenderPlayer) {
+            const defenderRemainingTerrs = (Object.values(currentTerrs) as TerritoryState[]).filter(t => t.ownerId === defenderPlayer.id);
+            if (defenderRemainingTerrs.length === 0) {
+              addLog(`☠️ ${defenderPlayer.name} foi totalmente eliminado do jogo por ${activePlayer.name}!`, 'elimination');
+              setPlayers(prevP => prevP.map(p => {
+                if (p.id === defenderPlayer.id) return { ...p, eliminated: true };
+                if (p.id === activePlayer.id) return { ...p, cards: [...p.cards, ...defenderPlayer.cards] };
+                return p;
+              }));
+            }
+          }
+          return currentTerrs;
+        });
+        checkVictory();
+      }, 100);
+    } else {
+      setTerritories(prev => ({
+        ...prev,
+        [selectedTerritoryId]: { ...prev[selectedTerritoryId], armies: result.attackerRemaining },
+        [targetTerritoryId]: { ...prev[targetTerritoryId], armies: result.defenderRemaining }
+      }));
+    }
+
+    setIsCombatModalOpen(false);
+    setTargetTerritoryId(null);
+  };
+
+  const handleExecuteManeuver = (armiesToMove: number) => {
+    if (!selectedTerritoryId || !targetTerritoryId) return;
+    setTerritories(prev => ({
+      ...prev,
+      [selectedTerritoryId]: { ...prev[selectedTerritoryId], armies: prev[selectedTerritoryId].armies - armiesToMove },
+      [targetTerritoryId]: { ...prev[targetTerritoryId], armies: prev[targetTerritoryId].armies + armiesToMove }
+    }));
+    addLog(`Movimentou ${armiesToMove} exércitos de ${TERRITORIES[selectedTerritoryId].name} para ${TERRITORIES[targetTerritoryId].name}`, 'mechanic');
+    setSelectedTerritoryId(null);
+    setTargetTerritoryId(null);
+    setIsManeuverModalOpen(false);
+  };
+
+  const handleTradeCards = (cardIds: string[], bonusArmies: number) => {
+    if (!activePlayer) return;
+    setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, cards: p.cards.filter(c => !cardIds.includes(c)) } : p));
+    setReserveArmies(prev => prev + bonusArmies);
+    setCardTradeCount(prev => prev + 1);
+    addLog(`🃏 ${activePlayer.name} trocou cartas por +${bonusArmies} exércitos!`, 'card');
+  };
+
+  const handleNextPhase = useCallback(() => {
+    warAudio.playClick();
+    setSelectedTerritoryId(null);
+    setTargetTerritoryId(null);
+
+    if (currentPhase === 'reinforce') {
+      setCurrentPhase('attack');
+      addLog(`General ${activePlayer.name} iniciou a Fase de Ataques.`, 'attack');
+    } else if (currentPhase === 'attack') {
+      setCurrentPhase('maneuver');
+      addLog(`General ${activePlayer.name} iniciou o Remanejamento.`, 'mechanic');
+    } else if (currentPhase === 'maneuver') {
+      if (conqueredThisTurn) {
+        const availableCards = Object.keys(TERRITORIES).filter(tId => !players.some(p => p.cards.includes(tId)));
+        if (availableCards.length > 0) {
+          const drawn = availableCards[Math.floor(Math.random() * availableCards.length)];
+          setPlayers(prev => prev.map(p => p.id === activePlayer.id ? { ...p, cards: [...p.cards, drawn] } : p));
+          warAudio.playCard();
+          addLog(`🎴 ${activePlayer.name} recebeu a carta ${TERRITORIES[drawn]?.name}!`, 'card');
+        }
+      }
+
+      checkVictory();
+      let nextIdx = (activePlayerIndex + 1) % players.length;
+      while (players[nextIdx].eliminated) nextIdx = (nextIdx + 1) % players.length;
+
+      if (nextIdx === 0) {
+        setCurrentRound(r => r + 1);
+        if (activeMechanics.globalEvents) {
+          const randomEvt = GLOBAL_EVENTS[Math.floor(Math.random() * GLOBAL_EVENTS.length)];
+          setActiveGlobalEvent(randomEvt);
+          addLog(`⚡ EVENTO MUNDIAL: ${randomEvt.name} - ${randomEvt.description}`, 'event');
+        }
+      }
+
+      setActivePlayerIndex(nextIdx);
+      setCurrentPhase('reinforce');
+      setConqueredThisTurn(false);
+      const nextP = players[nextIdx];
+      const reinforcements = calculateReinforcements(nextP, territories);
+      setReserveArmies(reinforcements);
+      addLog(`Vez do general ${nextP.name} (Distribuição: +${reinforcements} tropas).`, 'reinforce');
+    }
+  }, [currentPhase, conqueredThisTurn, activePlayer, activePlayerIndex, players, territories, activeMechanics.globalEvents, calculateReinforcements, checkVictory, addLog]);
+
+  useEffect(() => {
+    if (!inGame || !activePlayer || !activePlayer.isAI || winnerPlayer) return;
+    const timer = setTimeout(() => {
+      if (currentPhase === 'reinforce') {
+        if (reserveArmies > 0) {
+          const aiTerrs = (Object.values(territories) as TerritoryState[]).filter(t => t.ownerId === activePlayer.id);
+          if (aiTerrs.length > 0) {
+            const targetTerr = aiTerrs.reduce((prev, curr) => {
+              const prevEnemyNeighbors = TERRITORIES[prev.id]?.neighbors.filter(n => territories[n]?.ownerId !== activePlayer.id).length || 0;
+              const currEnemyNeighbors = TERRITORIES[curr.id]?.neighbors.filter(n => territories[n]?.ownerId !== activePlayer.id).length || 0;
+              return currEnemyNeighbors > prevEnemyNeighbors ? curr : prev;
+            });
+            setTerritories(prev => ({ ...prev, [targetTerr.id]: { ...prev[targetTerr.id], armies: prev[targetTerr.id].armies + reserveArmies } }));
+            setReserveArmies(0);
+          }
+        }
+        handleNextPhase();
+      } else if (currentPhase === 'attack') {
+        const aiTerrs = (Object.values(territories) as TerritoryState[]).filter(t => t.ownerId === activePlayer.id && t.armies >= 2);
+        let foundAttack = false;
+        for (const fromT of aiTerrs) {
+          const neighbors = TERRITORIES[fromT.id]?.neighbors || [];
+          for (const toId of neighbors) {
+            const defT = territories[toId];
+            if (defT && defT.ownerId !== activePlayer.id && fromT.armies > defT.armies + 1) {
+              foundAttack = true;
+              setSelectedTerritoryId(fromT.id);
+              setTargetTerritoryId(toId);
+              const moved = fromT.armies - 1;
+              handleResolveCombat({ attackerRemaining: 1, defenderRemaining: 0, conquered: true, movedArmies: moved });
+              break;
+            }
+          }
+          if (foundAttack) break;
+        }
+        handleNextPhase();
+      } else if (currentPhase === 'maneuver') {
+        handleNextPhase();
+      }
+    }, 900);
+    return () => clearTimeout(timer);
+  }, [inGame, activePlayer, currentPhase, reserveArmies, territories, winnerPlayer, handleNextPhase]);
+
+  const handleUseTacticalAction = (actionType: string) => {
+    if (!activePlayer) return;
+    if (actionType === 'air_strike') {
+      setTacticalTargetMode('air_strike');
+      addLog(`✈️ Modo Ataque Aéreo: Selecione um território seu e em seguida o alvo inimigo!`, 'mechanic');
+    } else if (actionType === 'fortify') {
+      setTacticalTargetMode('fortify');
+      addLog(`🛡️ Modo Fortaleza: Clique em um território seu para erguer fortificação (+1 dado de defesa).`, 'mechanic');
+    } else if (actionType === 'spy_objective') {
+      setIsObjectiveModalOpen(true);
+      addLog(`👁️ Espionagem militar obteve relatórios táticos de inteligência.`, 'mechanic');
+    } else if (actionType === 'emergency_recruits') {
+      setReserveArmies(prev => prev + 3);
+      warAudio.playTroopPlace();
+      addLog(`🪖 Conscrição de Emergência! +3 exércitos adicionados à reserva.`, 'mechanic');
+    } else if (actionType === 'blitzkrieg') {
+      warAudio.playDiceRoll();
+      addLog(`⚡ Blitzkrieg ativada! Moral das tropas ofensivas no nível máximo.`, 'mechanic');
+    }
+  };
+
+  const activeObjective = useMemo(() => {
+    if (!activePlayer) return CLASSIC_OBJECTIVES[0];
+    return objectivesDeck.find(o => o.id === activePlayer.objectiveId) || CLASSIC_OBJECTIVES[0];
+  }, [activePlayer, objectivesDeck]);
+
+  const activeProgress = useMemo(() => {
+    if (!activePlayer) return { completed: false, percent: 0, statusText: '' };
+    return checkObjectiveProgress(activeObjective, activePlayer, players, territories);
+  }, [activeObjective, activePlayer, players, territories]);
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-950 font-['Plus_Jakarta_Sans'] select-none">
+      {!inGame ? (
+        <GameSetup
+          onStartGame={handleStartGame}
+          onOpenObjectivesBuilder={() => setIsObjectivesBuilderOpen(true)}
+          onOpenMechanicsEditor={() => setIsMechanicsEditorOpen(true)}
+          activeMechanics={activeMechanics}
+          objectivesDeck={objectivesDeck}
+        />
+      ) : (
+        <div className="flex flex-col h-full w-full">
+          <GameHeader
+            activePlayer={activePlayer}
+            currentPhase={currentPhase}
+            reserveArmies={reserveArmies}
+            currentRound={currentRound}
+            activeGlobalEvent={activeGlobalEvent}
+            onToggleAudio={toggleAudio}
+            audioEnabled={audioEnabled}
+          />
+          {tacticalTargetMode && (
+            <div className="w-full bg-amber-600/90 text-slate-950 px-4 py-1.5 text-xs font-black tracking-wider flex items-center justify-between animate-pulse">
+              <span>
+                {tacticalTargetMode === 'air_strike'
+                  ? '✈️ MIRA AÉREA ATIVA: Selecione primeiro seu território de lançamento e depois o território inimigo!'
+                  : '🛡️ CONSTRUIR FORTALEZA: Clique no seu território para fortificar!'}
+              </span>
+              <button onClick={() => setTacticalTargetMode(null)} className="px-2 py-0.5 rounded bg-black/40 text-white text-[11px] font-bold">Cancelar</button>
+            </div>
+          )}
+          <main className="flex-1 w-full relative overflow-hidden bg-[#0a1520] p-2 sm:p-4 flex items-center justify-center">
+            <WarBoard
+              territories={territories}
+              players={players}
+              activePlayer={activePlayer}
+              currentPhase={currentPhase}
+              selectedTerritoryId={selectedTerritoryId}
+              targetTerritoryId={targetTerritoryId}
+              onSelectTerritory={handleSelectTerritory}
+              validTargets={validTargets}
+              activeMechanics={activeMechanics}
+              fogRevealedTerritories={fogRevealedTerritories}
+            />
+          </main>
+          <ActionPanel
+            activePlayer={activePlayer}
+            currentPhase={currentPhase}
+            reserveArmies={reserveArmies}
+            objectiveProgressPercent={activeProgress.percent}
+            activeMechanics={activeMechanics}
+            onNextPhase={handleNextPhase}
+            onOpenObjective={() => setIsObjectiveModalOpen(true)}
+            onOpenCards={() => setIsCardsModalOpen(true)}
+            onOpenTacticalCards={() => setIsTacticalCardsOpen(true)}
+            onOpenObjectivesBuilder={() => setIsObjectivesBuilderOpen(true)}
+            onOpenMechanicsEditor={() => setIsMechanicsEditorOpen(true)}
+            onOpenLogs={() => setIsLogsOpen(true)}
+            onRestart={() => setInGame(false)}
+          />
+        </div>
+      )}
+
+      {isCombatModalOpen && selectedTerritoryId && targetTerritoryId && (
+        <CombatModal
+          attackerPlayer={activePlayer}
+          defenderPlayer={players.find(p => p.id === territories[targetTerritoryId].ownerId) || players[0]}
+          attackerTerritoryState={territories[selectedTerritoryId]}
+          defenderTerritoryState={territories[targetTerritoryId]}
+          activeMechanics={activeMechanics}
+          onResolveCombat={handleResolveCombat}
+          onClose={() => { setIsCombatModalOpen(false); setTargetTerritoryId(null); }}
+        />
+      )}
+
+      {isManeuverModalOpen && selectedTerritoryId && targetTerritoryId && (
+        <ManeuverModal
+          fromTerritory={territories[selectedTerritoryId]}
+          toTerritory={territories[targetTerritoryId]}
+          onExecuteManeuver={handleExecuteManeuver}
+          onClose={() => { setIsManeuverModalOpen(false); setTargetTerritoryId(null); }}
+        />
+      )}
+
+      {isCardsModalOpen && activePlayer && (
+        <CardsModal
+          player={activePlayer}
+          tradeCount={cardTradeCount}
+          territories={territories}
+          onTradeCards={handleTradeCards}
+          onClose={() => setIsCardsModalOpen(false)}
+        />
+      )}
+
+      {isObjectiveModalOpen && activePlayer && (
+        <ObjectiveModal
+          objective={activeObjective}
+          progress={activeProgress}
+          playerName={activePlayer.name}
+          onClose={() => setIsObjectiveModalOpen(false)}
+        />
+      )}
+
+      {isObjectivesBuilderOpen && (
+        <ObjectivesBuilderModal
+          objectivesDeck={objectivesDeck}
+          onAddObjective={(newObj) => setObjectivesDeck(prev => [...prev, newObj])}
+          onRemoveObjective={(id) => setObjectivesDeck(prev => prev.filter(o => o.id !== id))}
+          onClose={() => setIsObjectivesBuilderOpen(false)}
+        />
+      )}
+
+      {isMechanicsEditorOpen && (
+        <MechanicsEditorModal
+          mechanics={activeMechanics}
+          onUpdateMechanics={setActiveMechanics}
+          onClose={() => setIsMechanicsEditorOpen(false)}
+        />
+      )}
+
+      {isTacticalCardsOpen && activePlayer && (
+        <TacticalCardsModal
+          player={activePlayer}
+          onUseTacticalAction={handleUseTacticalAction}
+          onClose={() => setIsTacticalCardsOpen(false)}
+        />
+      )}
+
+      {isLogsOpen && <GameLogModal logs={gameLogs} onClose={() => setIsLogsOpen(false)} />}
+
+      {winnerPlayer && (
+        <VictoryModal
+          winner={winnerPlayer}
+          objective={activeObjective}
+          totalTurns={currentRound}
+          onPlayAgain={() => { setWinnerPlayer(null); setInGame(false); }}
+        />
+      )}
+    </div>
+  );
 }
