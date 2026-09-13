@@ -102,19 +102,7 @@ Controlar Brasil, Moscou e China com pelo menos 4 exércitos em cada uma, além 
 ### Muralha Continental
 Controlar 14 territórios, mantendo pelo menos 3 exércitos em cada um.
 
-## 11. Criador de objetivos
-
-O `ObjectivesBuilderModal` permite criar objetivos personalizados utilizando:
-
-- continentes
-- quantidade de territórios
-- territórios fortificados
-- capitais
-- eliminação de uma cor
-
-Também permite selecionar continentes e territórios e gera automaticamente uma descrição para o objetivo.
-
-## 12. Editor de mecânicas
+## 11. Editor de mecânicas
 
 O `MechanicsEditorModal` permite configurar:
 
@@ -130,7 +118,7 @@ O `MechanicsEditorModal` permite configurar:
 - pactos de aliança (`alliancePacts`)
 - quantidade mínima de tropas colocadas (`minArmiesPlacement`), com padrão 3
 
-## 13. Cartas
+## 12. Cartas
 
 As cartas de território utilizam os símbolos círculo, triângulo, quadrado e coringa.
 
@@ -138,7 +126,7 @@ A troca progressiva de cartas utiliza os valores:
 
 `4, 6, 8, 10, 12, 15, 20, 25, 30, 35, 40, 45, 50`
 
-## 14. Cartas táticas
+## 13. Cartas táticas
 
 As cartas táticas existentes incluem:
 
@@ -168,7 +156,7 @@ Esta é uma carta tática diferente do Bombardeio Aéreo.
 - Não existe a regra de deixar obrigatoriamente 1 soldado no território de origem para esta operação.
 - Depois de usada, a carta é consumida.
 
-## 15. Eventos globais
+## 14. Eventos globais
 
 Os eventos globais incluem:
 
@@ -180,17 +168,17 @@ Os eventos globais incluem:
 
 Os eventos possuem duração em rodadas.
 
-## 16. Nevoeiro de guerra
+## 15. Nevoeiro de guerra
 
 O `App.tsx` calcula os territórios revelados com base nos territórios controlados pelo jogador, permitindo ocultar informações fora da área conhecida quando o nevoeiro de guerra está ativo.
 
-## 17. IA
+## 16. IA
 
 A IA possui sistemas de reforço, seleção estratégica de territórios, ataques automáticos e manobras.
 
 A lógica atual é simples e utiliza, entre outras condições, uma comparação em que o atacante precisa ter mais tropas que o defensor por uma margem mínima.
 
-## 18. Registro da guerra
+## 17. Registro da guerra
 
 O jogo possui `GameLogEntry` para registrar:
 
@@ -204,7 +192,7 @@ O jogo possui `GameLogEntry` para registrar:
 
 Cada registro pode conter rodada, texto, horário e tipo/cor. O `GameLogModal` exibe o histórico da guerra.
 
-## 19. Sistema de vitória
+## 18. Sistema de vitória
 
 A vitória exibe uma tela de **VITÓRIA ABSOLUTA**, com:
 
@@ -217,11 +205,11 @@ A vitória exibe uma tela de **VITÓRIA ABSOLUTA**, com:
 - som de vitória
 - opção de iniciar uma nova partida
 
-## 20. Som
+## 19. Som
 
 O sistema de áudio fica em `src/sound/audio.ts`, com `warAudio` e controle de áudio disponível no HUD.
 
-## 21. Interface
+## 20. Interface
 
 A estrutura principal é:
 
@@ -246,19 +234,18 @@ Os modais incluem:
 - ManeuverModal
 - CardsModal
 - ObjectiveModal
-- ObjectivesBuilderModal
 - MechanicsEditorModal
 - TacticalCardsModal
 - GameLogModal
 - VictoryModal
 
-## 22. Uma coisa importante que percebi
+## 21. Uma coisa importante que percebi
 
 A arquitetura separa os tipos, dados e componentes.
 
 Os tipos contêm os modelos de dados; os arquivos de dados concentram mapa, objetivos, mecânicas, eventos e cartas; e os componentes concentram a interface.
 
-## 23. Porém, encontrei algumas coisas que precisam de atenção
+## 22. Porém, encontrei algumas coisas que precisam de atenção
 
 Alguns pontos ainda precisam de evolução:
 
@@ -269,7 +256,7 @@ Alguns pontos ainda precisam de evolução:
 - A IA ainda é simples e precisa evoluir em avaliação de risco, estratégia baseada no objetivo secreto, estratégia de continentes, defesa de fronteiras, economia de cartas, diplomacia, eventos e planejamento de vários turnos.
 - O `App.tsx` concentra muita lógica do jogo. Uma evolução possível seria separar em módulos como `game/combat.ts`, `turnManager.ts`, `reinforcement.ts`, `objectives.ts`, `cards.ts`, `events.ts`, `ai.ts` e `victory.ts`.
 
-## 24. O que eu entendi como objetivo do projeto
+## 23. O que eu entendi como objetivo do projeto
 
 O objetivo não é simplesmente criar um “WAR online”.
 
