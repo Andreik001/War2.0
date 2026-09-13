@@ -1,277 +1,213 @@
-# War2.0
+# WAR 2.0 — Estratégia Global
 
-## 1. O que é o projeto
+Projeto de jogo digital de estratégia e conquista de territórios inspirado no WAR Grow, usando o mapa de 42 territórios como base e permitindo regras, objetivos e mecânicas personalizadas.
 
-O projeto é um jogo de estratégia e conquista baseado no mapa oficial do WAR Grow, mas com mecânicas e objetivos personalizados. A aplicação é construída para PC e multiplayer, com uma estrutura preparada para expansão.
+## 1. Visão do projeto
 
-Tecnologias principais: React 19, TypeScript, Vite, Tailwind CSS, Lucide, Motion, Canvas Confetti, `@google/genai`, Express e dotenv. O projeto utiliza a porta 3000.
+O projeto funciona como um **motor configurável de WAR**, combinando conquista de territórios, objetivos secretos, cartas de território, cartas táticas, eventos globais, fortificações, bombardeio aéreo, Ataque Aéreo Estratégico, nevoeiro de guerra, capitais, pactos, IA e histórico da guerra.
 
-## 2. O mapa do WAR
+## 2. Tecnologias
 
-O mapa possui 6 continentes, 42 territórios e bônus por continente:
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- Lucide React
+- Motion
+- Canvas Confetti
+- Express / dotenv (estrutura preparada)
+- Google GenAI (dependência preparada; integração efetiva ainda não é usada pelo jogo)
 
-- América do Norte: 9 territórios, bônus +5
-- América do Sul: 4 territórios, bônus +2
-- Europa: 7 territórios, bônus +5
-- África: 6 territórios, bônus +3
-- Ásia: 12 territórios, bônus +7
-- Oceania: 4 territórios, bônus +2
+## 3. Mapa do WAR
 
-Os dados de cada território incluem nome, continente, vizinhos, posição x/y, símbolo da carta, caminho SVG e rotas marítimas.
+O mapa possui **6 continentes e 42 territórios**.
 
-Territórios: Alasca, Mackenzie, Groenlândia, Vancouver, Labrador, Califórnia, Nova York, México, Territórios do Noroeste, Venezuela, Peru, Brasil, Argentina, Islândia, Inglaterra, Suécia, Alemanha, Polônia, Moscou, Espanha, Itália, França, Egito, Argélia, Nigéria, Congo, África do Sul, Madagascar, Oriente Médio, Índia, China, Mongólia, Sibéria, Vladivostok, Japão, Sumatra, Borneo, Nova Guiné, Austrália, Afeganistão e Urais.
+| Continente | Territórios | Bônus |
+|---|---:|---:|
+| América do Norte | 9 | +5 |
+| América do Sul | 4 | +2 |
+| Europa | 7 | +5 |
+| África | 6 | +3 |
+| Ásia | 12 | +7 |
+| Oceania | 4 | +2 |
 
-## 3. Jogadores
+### América do Norte
+Alasca, Mackenzie, Groenlândia, Vancouver, Ottawa, Labrador, Califórnia, Nova York e México.
 
-O jogo suporta até 6 jogadores, nas cores Vermelho, Azul, Verde, Amarelo, Branco e Preto.
+### América do Sul
+Venezuela, Peru, Brasil e Argentina.
 
-Cada jogador possui:
+### Europa
+Islândia, Inglaterra, França, Alemanha, Polônia, Suécia e Moscou.
 
-- ID
-- nome
-- cor
-- indicação de humano ou IA
-- dificuldade da IA
-- objetivo secreto
-- cartas
-- cartas táticas
-- estado de eliminado
-- estatísticas
+### África
+Argélia, Egito, Sudão, Congo, África do Sul e Madagascar.
 
-As estatísticas incluem territórios perdidos/conquistados e exércitos derrotados/perdidos.
+### Ásia
+Oriente Médio, Aral, Omsk, Dudinka, Sibéria, Tchita, Vladivostok, Mongólia, China, Índia, Vietnã e Japão.
 
-## 4. Sistema de turnos
+### Oceania
+Sumatra, Bornéu, Nova Guiné e Austrália.
 
-Cada turno possui três fases principais:
+As conexões terrestres e rotas marítimas ficam em `src/data/warMapData.ts`.
 
-1. Reforços
-2. Ataque
-3. Manobra
+## 4. Jogadores
 
-O jogo controla rodada, jogador ativo, fase atual, tropas de reserva e se o jogador conquistou território naquela rodada.
+A partida suporta de **2 a 6 jogadores**, nas cores Vermelho, Azul, Verde, Amarelo, Branco e Preto. Cada jogador possui nome, cor, humano/IA, dificuldade, objetivo secreto, cartas, cartas táticas, estado de eliminação e estatísticas.
 
-## 5. Sistema de reforços
+## 5. Turnos
 
-O jogador recebe reforços calculados por:
+Cada turno possui três fases:
 
-`max(3, metade dos territórios controlados)`
+1. Reforço.
+2. Ataque.
+3. Remanejamento.
 
-Também são aplicados os bônus dos continentes controlados e possíveis efeitos de eventos.
+Ao terminar o remanejamento, a vez passa ao próximo general não eliminado.
 
-## 6. Sistema de combate
+## 6. Reforços
 
-O combate utiliza o `CombatModal`, com dados do atacante e defensor, perdas, conquista do território, retirada e movimentação das tropas sobreviventes.
+A regra base é o maior valor entre 3 tropas e metade dos territórios controlados, somando bônus de continentes totalmente controlados e eventuais bônus de eventos.
 
-Existe a configuração `defenderWinsTies`, que determina se o defensor vence em caso de empate. Por padrão, ela está habilitada.
+## 7. Combate
 
-## 7. Sistema de manobra
+O combate usa dados de 1 a 6, até 3 dados por lado, comparação do maior para o menor e regra configurável de empate. Com `defenderWinsTies` ativado, o defensor vence empates. Fortificações podem aumentar a defesa.
 
-A manobra permite selecionar território de origem, território de destino e quantidade de tropas.
+## 8. Remanejamento
 
-Normalmente deve permanecer pelo menos 1 exército no território de origem. Existe também a configuração `unlimitedManeuvers` para controlar a quantidade de manobras permitidas.
+O jogador move tropas entre territórios próprios conectados, usando o modal de manobra. A regra de remanejamento pode ser configurada.
 
-## 8. Objetivos secretos
+## 9. Objetivos secretos clássicos
 
-O jogo possui objetivos clássicos, incluindo exemplos como:
+Inclui objetivos para conquistar combinações de continentes, conquistar 24 territórios e conquistar 18 territórios mantendo pelo menos 2 exércitos em cada um.
 
-- conquistar Europa + Oceania + 1 continente
-- conquistar Ásia + América do Sul
-- conquistar Ásia + África
-- conquistar América do Norte + África
-- conquistar América do Norte + Oceania
-- conquistar Europa + América do Sul + 1 continente
-- conquistar 24 territórios
-- conquistar 18 territórios com pelo menos 2 exércitos em cada um
+## 10. Objetivos de eliminar uma cor
 
-## 9. Objetivos de eliminar uma cor
+Existem objetivos para eliminar completamente Amarelo, Azul, Branco, Preto, Vermelho e Verde. Se o alvo for a própria cor ou não estiver na partida, o objetivo usa o fallback de 24 territórios.
 
-Existem objetivos de eliminar cada uma das seis cores de jogador.
+## 11. Objetivos personalizados
 
-Se o alvo for o próprio jogador ou a cor-alvo não estiver presente, o objetivo é substituído por um objetivo alternativo de conquistar 24 territórios.
+- **Domínio Insular e Marítimo:** Islândia, Inglaterra, Madagascar, Japão, Sumatra, Bornéu, Nova Guiné e Austrália.
+- **Tríade das Grandes Capitais:** Brasil, Moscou e China com pelo menos 4 exércitos em cada uma, além de outros territórios conforme o objetivo.
+- **Muralha Continental:** pelo menos 14 territórios com no mínimo 3 exércitos em cada um.
 
-## 10. Objetivos personalizados
+## 12. Editor de mecânicas
 
-Existem objetivos personalizados, como:
+As regras configuráveis incluem Nevoeiro de Guerra, Bombardeio Aéreo, Fortificações, Eventos Globais, Cartas Táticas, empate favorável ao defensor, troca progressiva de cartas, Capitais, remanejamento ilimitado, Pactos de Não-Agressão e mínimo de tropas por rodada.
 
-### Domínio Insular/Marítimo
-Controlar Islândia, Inglaterra, Madagascar, Japão, Sumatra, Borneo, Nova Guiné e Austrália.
+## 13. Cartas de território
 
-### Três Grandes Capitais
-Controlar Brasil, Moscou e China com pelo menos 4 exércitos em cada uma, além dos demais requisitos definidos pelo objetivo.
+Símbolos: círculo, triângulo, quadrado e coringa. A troca progressiva usa 4, 6, 8, 10, 12, 15, 20, 25, 30, 35, 40, 45, 50...
 
-### Muralha Continental
-Controlar 14 territórios, mantendo pelo menos 3 exércitos em cada um.
+## 14. Cartas táticas
 
-## 11. Editor de mecânicas
+- **Bombardeio Aéreo:** ataque a até 2 conexões, destruindo 1 a 2 tropas sem movimentar soldados.
+- **Ataque Aéreo Estratégico:** carta secreta descrita na seção 15.
+- **Construir Fortaleza:** fortificação defensiva.
+- **Espionagem Militar:** ação de inteligência.
+- **Conscrição de Emergência:** +3 exércitos na reserva.
+- **Guerra Relâmpago:** bônus ofensivo nos próximos ataques da rodada.
+- **Pacto de Não-Agressão:** trégua temporária.
 
-O `MechanicsEditorModal` permite configurar:
+## 15. Ataque Aéreo Estratégico — implementação
 
-- nevoeiro de guerra (`fogOfWar`)
-- ataques aéreos (`airStrikes`)
-- fortificações (`fortifications`)
-- eventos globais (`globalEvents`)
-- cartas táticas (`tacticalCards`)
-- vitória do defensor em empates (`defenderWinsTies`)
-- trocas progressivas de cartas (`progressiveCardTrades`)
-- modo capitais (`capitalsMode`)
-- manobras ilimitadas (`unlimitedManeuvers`)
-- pactos de aliança (`alliancePacts`)
-- quantidade mínima de tropas colocadas (`minArmiesPlacement`), com padrão 3
+No início de cada nova partida, o sistema sorteia **um território secreto do mapa**. O território não é revelado. O jogador só descobre a região quando a conquista. Ao descobrir, recebe a carta `tac_strategic_air_strike`.
 
-## 12. Cartas
+Para usar a carta:
 
-As cartas de território utilizam os símbolos círculo, triângulo, quadrado e coringa.
+1. O jogador precisa possuir a carta.
+2. Escolhe uma região própria com **pelo menos 20 exércitos**.
+3. Escolhe qualquer território inimigo do mapa, sem exigir conexão.
+4. Escolhe entre 20 e todos os exércitos disponíveis na origem.
+5. `floor(contingente / 2)` é perdido como custo da operação.
+6. O restante forma a força de batalha.
+7. A batalha usa os **dados normais** do combate e a regra normal de empate.
+8. A carta não garante vitória.
+9. Se vencer, os sobreviventes ocupam o território alvo.
+10. Se perder ou recuar, os sobreviventes retornam à origem; o custo da operação permanece perdido.
+11. Não existe obrigação de deixar 1 exército na origem nessa operação.
+12. A carta é consumida quando a operação é lançada.
 
-A troca progressiva de cartas utiliza os valores:
+A implementação adiciona seleção de origem, seleção de alvo global, configuração do contingente, custo de operação e integração com o modal de combate normal.
 
-`4, 6, 8, 10, 12, 15, 20, 25, 30, 35, 40, 45, 50`
+## 16. Eventos globais
 
-## 13. Cartas táticas
+Eventos cadastrados: Inverno Siberiano Severo, Crise no Canal de Suez, Remessa Aliada de Armamentos, Insurreição Popular e Monções Tropicais no Sudeste Asiático.
 
-As cartas táticas existentes incluem:
+## 17. Nevoeiro de guerra
 
-- **Bombardeio Aéreo:** atacar um inimigo dentro de até 2 conexões, causando perda de 1–2 tropas, sem movimentação de tropas.
-- **Construir Fortaleza:** recebe +1 dado de defesa.
-- **Espionagem Militar:** revela o objetivo/cartas de um oponente.
-- **Conscrição de Emergência:** recebe +3 exércitos de reserva.
-- **Blitzkrieg:** os próximos 3 ataques recebem bônus no maior dado.
-- **Pacto de Não-Agressão:** cria a possibilidade de uma trégua temporária.
+Quando ativado, o jogador enxerga seus territórios e os territórios vizinhos conforme a lógica de revelação atual.
 
-### Ataque Aéreo Estratégico
+## 18. IA
 
-Esta é uma carta tática diferente do Bombardeio Aéreo.
+A IA atual distribui reforços, escolhe fronteiras, executa ataques simples quando possui vantagem e passa ao remanejamento. A estratégia pode evoluir para considerar objetivos secretos, risco, continentes, defesa, cartas, diplomacia, eventos e planejamento de vários turnos.
 
-- No início de cada nova partida, o sistema escolhe aleatoriamente **um território secreto do mapa**.
-- O território secreto muda aleatoriamente a cada nova partida.
-- Nenhum jogador sabe qual território foi escolhido.
-- O jogador descobre o território secreto somente quando o conquista.
-- Ao conquistar o território secreto, o jogador recebe a carta **Ataque Aéreo Estratégico**.
-- Para usar a carta, o jogador precisa ter pelo menos **20 soldados no território de origem**.
-- Se tiver mais de 20 soldados, o jogador escolhe quantos soldados participarão da operação.
-- A carta permite atacar **qualquer território inimigo do mapa**, independentemente de ser vizinho ou não.
-- O ataque não garante vitória: a batalha é resolvida usando as **regras normais de combate e dados**.
-- Se o atacante vencer, os soldados sobreviventes da batalha ocupam/conquistam o território-alvo.
-- Se o atacante perder, não há conquista e as perdas normais do combate são aplicadas.
-- Como custo da operação, o jogador perde **metade dos soldados escolhidos/comprometidos**.
-- Não existe a regra de deixar obrigatoriamente 1 soldado no território de origem para esta operação.
-- Depois de usada, a carta é consumida.
+## 19. Registro da guerra
 
-## 14. Eventos globais
+O histórico registra ataques, conquistas, reforços, cartas, eliminações, eventos e mecânicas especiais.
 
-Os eventos globais incluem:
+## 20. Vitória
 
-- Inverno Siberiano
-- Crise de Suez
-- Envio de Armas Aliadas (+2)
-- Insurreição Popular
-- Monções Tropicais
+Ao concluir o objetivo secreto, o jogador recebe a tela de vitória com vencedor, objetivo, duração, estatísticas, animação, confetes, som e opção de nova partida.
 
-Os eventos possuem duração em rodadas.
+## 21. Interface e arquitetura
 
-## 15. Nevoeiro de guerra
+A aplicação separa mapa, HUD, combate, remanejamento, cartas, objetivos, configuração, modais, som, dados e tipos. A maior parte da lógica da partida está em `src/App.tsx`.
 
-O `App.tsx` calcula os territórios revelados com base nos territórios controlados pelo jogador, permitindo ocultar informações fora da área conhecida quando o nevoeiro de guerra está ativo.
+## 22. Estrutura principal
 
-## 16. IA
+```text
+src/
+├── App.tsx
+├── main.tsx
+├── index.css
+├── components/
+│   ├── Cards/
+│   ├── Combat/
+│   ├── HUD/
+│   ├── Map/
+│   ├── Modals/
+│   ├── Objective/
+│   └── Setup/
+├── data/
+│   ├── mechanicsData.ts
+│   ├── objectivesData.ts
+│   └── warMapData.ts
+├── sound/
+│   └── audio.ts
+└── types/
+    └── war.ts
+```
 
-A IA possui sistemas de reforço, seleção estratégica de territórios, ataques automáticos e manobras.
+## 23. Pontos conhecidos para evolução
 
-A lógica atual é simples e utiliza, entre outras condições, uma comparação em que o atacante precisa ter mais tropas que o defensor por uma margem mínima.
+A dependência do Gemini está preparada, mas a integração efetiva ainda não é usada. Algumas mecânicas podem receber implementação mais profunda e a IA ainda é simples. A lógica poderá ser separada futuramente em módulos de combate, turnos, reforços, objetivos, cartas, eventos, IA e vitória.
 
-## 17. Registro da guerra
+## 24. Rodar no PC
 
-O jogo possui `GameLogEntry` para registrar:
+Pré-requisito: **Node.js**.
 
-- ataques
-- conquistas
-- cartas
-- reforços
-- eliminações
-- eventos
-- alterações de mecânicas
+Na pasta do projeto:
 
-Cada registro pode conter rodada, texto, horário e tipo/cor. O `GameLogModal` exibe o histórico da guerra.
+```bash
+npm install
+npm run dev
+```
 
-## 18. Sistema de vitória
+Depois abra o endereço local informado pelo Vite, normalmente `http://localhost:3000`.
 
-A vitória exibe uma tela de **VITÓRIA ABSOLUTA**, com:
+Para verificar TypeScript:
 
-- vencedor
-- objetivo secreto
-- duração da guerra
-- territórios conquistados
-- animação
-- confetes
-- som de vitória
-- opção de iniciar uma nova partida
+```bash
+npm run lint
+```
 
-## 19. Som
+Para criar a versão de produção:
 
-O sistema de áudio fica em `src/sound/audio.ts`, com `warAudio` e controle de áudio disponível no HUD.
+```bash
+npm run build
+```
 
-## 20. Interface
+## 25. Objetivo final
 
-A estrutura principal é:
-
-`App → GameSetup / Game`
-
-Durante o jogo existem:
-
-- GameHeader
-- WarBoard
-- ActionPanel
-- Objective
-- Cards
-- Tactical Cards
-- Mechanics
-- Objectives
-- Logs
-- Restart
-
-Os modais incluem:
-
-- CombatModal
-- ManeuverModal
-- CardsModal
-- ObjectiveModal
-- MechanicsEditorModal
-- TacticalCardsModal
-- GameLogModal
-- VictoryModal
-
-## 21. Uma coisa importante que percebi
-
-A arquitetura separa os tipos, dados e componentes.
-
-Os tipos contêm os modelos de dados; os arquivos de dados concentram mapa, objetivos, mecânicas, eventos e cartas; e os componentes concentram a interface.
-
-## 22. Porém, encontrei algumas coisas que precisam de atenção
-
-Alguns pontos ainda precisam de evolução:
-
-- O Gemini está declarado no projeto, mas não foi encontrada uma integração efetiva completa.
-- O README original era basicamente um boilerplate genérico do AI Studio.
-- Algumas mecânicas ainda estão parcialmente implementadas, como pactos, capitais, eventos específicos e algumas funções de cartas táticas.
-- O novo **Ataque Aéreo Estratégico** precisa estar integrado ao combate normal com dados, em vez de simplesmente conquistar o território de forma automática. Também deve respeitar a seleção de 20 ou mais tropas, o custo de metade das tropas comprometidas, o alvo global e o consumo da carta.
-- A IA ainda é simples e precisa evoluir em avaliação de risco, estratégia baseada no objetivo secreto, estratégia de continentes, defesa de fronteiras, economia de cartas, diplomacia, eventos e planejamento de vários turnos.
-- O `App.tsx` concentra muita lógica do jogo. Uma evolução possível seria separar em módulos como `game/combat.ts`, `turnManager.ts`, `reinforcement.ts`, `objectives.ts`, `cards.ts`, `events.ts`, `ai.ts` e `victory.ts`.
-
-## 23. O que eu entendi como objetivo do projeto
-
-O objetivo não é simplesmente criar um “WAR online”.
-
-A visão é criar um **motor digital de WAR configurável**, que tenha como base o WAR e permita combinar:
-
-- objetivos personalizados
-- regras personalizadas
-- cartas táticas
-- eventos globais
-- fortificações
-- ataques aéreos
-- **Ataque Aéreo Estratégico com território secreto, escolha de tropas e combate normal por dados**
-- capitais
-- diplomacia
-- IA
-- nevoeiro de guerra
-
-A ideia é que o jogo possa continuar crescendo sem ficar preso às regras originais, permitindo criar diferentes experiências de guerra e estratégia dentro da mesma estrutura.
+Transformar o projeto em um **WAR digital altamente configurável**, mantendo a base do mapa clássico e permitindo novas regras e mecânicas sem limitar a experiência às regras tradicionais.
