@@ -35,7 +35,7 @@ export const TACTICAL_CARDS: TacticalCard[] = [
   {
     id: 'tac_strategic_air_strike',
     name: 'Ataque Aéreo Estratégico',
-    description: 'Carta secreta descoberta ao conquistar a região estratégica sorteada. Exige pelo menos 20 exércitos na origem e permite conquistar qualquer território do mapa colocando 1 exército nele.',
+    description: 'Carta secreta descoberta ao conquistar a região estratégica sorteada. Exige pelo menos 20 exércitos na origem. Permite iniciar uma batalha contra qualquer território do mapa. A batalha é resolvida normalmente pelos dados; a carta não garante a vitória. O jogador escolhe a quantidade de exércitos que participará do ataque e metade dessa quantidade é perdida como custo da operação. Não é obrigatório deixar 1 exército na região de origem. Se o atacante vencer, os exércitos sobreviventes da batalha ocupam o território conquistado.',
     costArmies: 0,
     icon: 'Plane',
     effect: 'strategic_air_strike'
